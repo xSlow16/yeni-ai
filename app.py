@@ -7,7 +7,7 @@ import io
 try:
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 except:
-    GROQ_API_KEY = ""
+    GROQ_API_KEY = "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"
 
 client = Groq(api_key=GROQ_API_KEY)
 
