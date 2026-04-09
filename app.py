@@ -10,29 +10,25 @@ import time
 # --- 1. SAYFA AYARLARI ---
 st.set_page_config(page_title="UltraAI | Akıllı Hafıza v5.0", layout="wide", page_icon="🎓")
 
-# --- 2. FIREBASE BAĞLANTISI (ZIRHLI VERSİYON) ---
+# --- 2. FIREBASE BAĞLANTISI (YENİ TOML FORMATI UYUMLU) ---
 db = None
 
 if not firebase_admin._apps:
     try:
-        # Secrets'tan JSON metnini çekiyoruz
-        fb_creds_raw = st.secrets["FIREBASE_JSON"].strip()
-        fb_creds_dict = json.loads(fb_creds_raw)
+        # TOML formatında olduğu için direkt dict olarak alıyoruz
+        fb_creds_dict = dict(st.secrets["FIREBASE_JSON"])
         
-        # Private Key içindeki \n ve padding hatalarını tamir et
+        # Private Key içindeki \n karakterlerini tamir et
         if "private_key" in fb_creds_dict:
-            # Önce çift ters bölüleri tekilleştir, sonra gerçek alt satıra çevir
             p_key = fb_creds_dict["private_key"].replace("\\n", "\n")
             fb_creds_dict["private_key"] = p_key
         
-        # Firebase'i başlat
         cred = credentials.Certificate(fb_creds_dict)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
         st.toast("✅ Bulut hafızası bağlandı!", icon="☁️")
     except Exception as e:
         st.error(f"⚠️ Firebase bağlantı hatası: {e}")
-        st.info("İpucu: Secrets kısmındaki FIREBASE_JSON içeriğini kopyalarken sonuna boşluk gelmediğinden emin ol kanka.")
 else:
     db = firestore.client()
 
@@ -40,10 +36,9 @@ else:
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except:
-    st.error("🔑 Groq API Key bulunamadı! Secrets kısmına 'GROQ_API_KEY' adıyla eklemelisin.")
+    st.error("🔑 Groq API Key bulunamadı! Secrets kısmına ekle kanka.")
     st.stop()
 
-# Kritik Model Tanımı (Hata giderildi)
 MODEL_NAME = "llama-3.1-8b-instant"
 
 # --- 4. MODERN UI (CSS) ---
@@ -65,18 +60,14 @@ st.markdown("""
 # --- HEADER ---
 st.markdown('<div class="header-card"><h1 style="color:white;">UltraAI Super-Asistan</h1><p style="color:#94a3b8;">Hafızalı, Akıllı ve Profesyonel Çalışma Platformu</p></div>', unsafe_allow_html=True)
 
-# --- OTURUM YÖNETİMİ ---
 if 'final_content' not in st.session_state: 
     st.session_state.final_content = ""
 
-# --- SEKMELER ---
 tab1, tab2, tab3, tab4 = st.tabs(["📥 Giriş", "📝 Özetle", "🎯 Test", "📜 Geçmiş"])
 
-# --- TAB 1: GİRİŞ ---
 with tab1:
     st.subheader("📚 Materyal Ekle")
     method = st.radio("Yöntem:", ["Metin Yapıştır", "PDF Yükle"], horizontal=True)
-    
     if method == "Metin Yapıştır":
         st.session_state.final_content = st.text_area("Ders notlarını buraya bırak kanka:", height=300)
     else:
@@ -86,7 +77,6 @@ with tab1:
                 st.session_state.final_content = "\n".join([page.extract_text() for page in p.pages if page.extract_text()])
             st.success("✅ PDF başarıyla okundu!")
 
-# --- TAB 2: ÖZETLE VE KAYDET ---
 with tab2:
     if st.session_state.final_content:
         tone = st.select_slider("Anlatım Tarzı:", options=["Basit", "Akademik", "Sınav Odaklı"])
@@ -98,8 +88,6 @@ with tab2:
                         model=MODEL_NAME
                     )
                     summary = res.choices[0].message.content
-                    
-                    # Firebase'e Kaydet
                     if db is not None:
                         db.collection('ozetler').add({
                             'baslik': st.session_state.final_content[:40].replace('\n', ' ') + "...",
@@ -107,15 +95,13 @@ with tab2:
                             'tarih': time.time()
                         })
                         st.success("✅ Özet hazırlandı ve geçmişe kaydedildi!")
-                    
                     st.markdown("### 📝 Hazırlanan Özet")
                     st.info(summary)
                 except Exception as e:
                     st.error(f"Hata oluştu: {e}")
     else:
-        st.warning("⚠️ Özet çıkarmak için önce 'Giriş' sekmesinden veri eklemelisin.")
+        st.warning("⚠️ Önce veri ekle kanka.")
 
-# --- TAB 3: TEST ÇÖZ ---
 with tab3:
     if st.session_state.final_content:
         if st.button("🎲 Soruları Üret"):
@@ -128,16 +114,12 @@ with tab3:
                     st.success(res.choices[0].message.content)
                 except Exception as e:
                     st.error(f"Hata: {e}")
-    else:
-        st.warning("⚠️ Önce veri ekle kanka.")
 
-# --- TAB 4: GEÇMİŞ ---
 with tab4:
     st.subheader("📜 Kayıtlı Notların")
     if db is not None:
         try:
             docs = db.collection('ozetler').order_by('tarih', direction=firestore.Query.DESCENDING).limit(15).stream()
-            
             has_docs = False
             for doc in docs:
                 has_docs = True
@@ -147,11 +129,7 @@ with tab4:
                     if st.button("🗑️ Sil", key=doc.id):
                         db.collection('ozetler').document(doc.id).delete()
                         st.rerun()
-            
             if not has_docs:
                 st.info("Henüz kaydedilmiş bir özet bulunmuyor.")
-                
         except Exception as e:
             st.error(f"Veriler çekilirken hata oluştu: {e}")
-    else:
-        st.error("Veritabanı bağlı değil, geçmişe ulaşılamıyor.")
