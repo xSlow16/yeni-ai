@@ -3,7 +3,7 @@ from groq import Groq
 import pdfplumber
 
 # --- 1. SAYFA AYARLARI ---
-st.set_page_config(page_title="Grok AI | Akıllı Asistan", layout="wide", page_icon="⚡")
+st.set_page_config(page_title="Grok AI | İçerik Analizi", layout="wide", page_icon="⚡")
 
 # --- 2. API AYARLARI ---
 if "GROQ_API_KEY" in st.secrets:
@@ -23,45 +23,40 @@ st.markdown("""
         padding: 2rem; border-radius: 1.5rem; text-align: center; 
         border: 1px solid #3b82f6; margin-bottom: 2rem;
     }
-    .metric-card {
-        background: #1e293b; padding: 1rem; border-radius: 0.75rem;
-        border: 1px solid #475569; text-align: center; margin-bottom: 1rem;
+    .analysis-card {
+        background: rgba(30, 41, 59, 0.7); padding: 1.2rem; border-radius: 1rem;
+        border-left: 5px solid #3b82f6; margin-bottom: 1rem;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- HEADER ---
-st.markdown('<div class="main-header"><h1>⚡ Grok AI v3.1</h1><p>Hatalar Gizli, Performans Açık</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>⚡ Grok AI v3.2</h1><p>İçeriği Keşfet, Bilgiye Hükmet</p></div>', unsafe_allow_html=True)
 
 if 'final_content' not in st.session_state: 
     st.session_state.final_content = ""
+if 'quick_analysis' not in st.session_state:
+    st.session_state.quick_analysis = "Materyal yüklediğinde analiz burada görünecek kanka."
 
-# --- SIDEBAR (İSTATİSTİKLER) ---
+# --- SIDEBAR (AKILLI İÇERİK ANALİZİ) ---
 with st.sidebar:
-    st.title("📊 İçerik Analizi")
-    if st.session_state.final_content:
-        char_count = len(st.session_state.final_content)
-        word_count = len(st.session_state.final_content.split())
-        reading_time = max(1, round(word_count / 200))
-        
-        st.markdown(f"""
-        <div class="metric-card">
-            <p style="color:#94a3b8; margin:0;">Karakter Sayısı</p>
-            <strong style="font-size:20px;">{char_count}</strong>
-        </div>
-        <div class="metric-card">
-            <p style="color:#94a3b8; margin:0;">Kelime Sayısı</p>
-            <strong style="font-size:20px;">{word_count}</strong>
-        </div>
-        <div class="metric-card">
-            <p style="color:#94a3b8; margin:0;">Okuma Süresi</p>
-            <strong style="font-size:20px; color:#10b981;">~{reading_time} dk</strong>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.info("İstatistikler için materyal yükle kanka.")
+    st.title("🔍 Akıllı İçerik Analizi")
+    st.markdown('<div class="analysis-card">', unsafe_allow_html=True)
+    st.write(st.session_state.quick_analysis)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    if st.session_state.final_content and st.button("🔄 Analizi Yenile"):
+        with st.spinner('Grok AI inceliyor...'):
+            try:
+                res = client.chat.completions.create(
+                    messages=[{"role": "user", "content": f"Aşağıdaki metni 2-3 kısa cümlede analiz et. Konusu nedir ve ana teması nedir belirt:\n\n{st.session_state.final_content[:5000]}"}],
+                    model=MODEL_NAME
+                )
+                st.session_state.quick_analysis = res.choices[0].message.content
+                st.rerun()
+            except:
+                st.toast("Analiz yapılamadı kanka.", icon="⚠️")
 
-# --- SEKMELER ---
+# --- ANA SEKMELER ---
 tab1, tab2, tab3, tab4 = st.tabs(["📥 Yükleme", "📝 Akıllı Özet", "🎯 Test Hazırla", "🃏 Flashcards"])
 
 # --- TAB 1: YÜKLEME ---
@@ -74,7 +69,7 @@ with tab1:
         if file:
             with pdfplumber.open(file) as p:
                 st.session_state.final_content = "\n".join([page.extract_text() for page in p.pages if page.extract_text()])
-            st.toast("✅ PDF başarıyla işlendi!", icon="📄")
+            st.toast("✅ İçerik yüklendi! Yan panelden analizi görebilirsin.", icon="📄")
 
 # --- TAB 2: ÖZETLE ---
 with tab2:
@@ -88,11 +83,8 @@ with tab2:
                         model=MODEL_NAME
                     )
                     st.info(res.choices[0].message.content)
-                except Exception as e:
-                    if "413" in str(e) or "rate_limit" in str(e):
-                        st.toast("🚨 Dosya çok büyük kanka! Biraz kısaltıp dene.", icon="❌")
-                    else:
-                        st.toast(f"⚠️ Hata: {e}", icon="❗")
+                except:
+                    st.toast("Dosya çok büyük kanka!", icon="❌")
     else:
         st.warning("Önce materyal yükle kanka.")
 
@@ -105,12 +97,12 @@ with tab3:
                 try:
                     safe_text = st.session_state.final_content[:11000]
                     res = client.chat.completions.create(
-                        messages=[{"role": "user", "content": f"Metne dayalı {q_count} test sorusu hazırlaki:\n\n{safe_text}"}],
+                        messages=[{"role": "user", "content": f"Metne dayalı {q_count} test sorusu ve cevap anahtarı hazırla:\n\n{safe_text}"}],
                         model=MODEL_NAME
                     )
                     st.write(res.choices[0].message.content)
-                except Exception as e:
-                    st.toast("📏 Metin çok uzun, sorular hazırlanamadı!", icon="❌")
+                except:
+                    st.toast("Metin çok uzun, sorular hazırlanamadı!", icon="❌")
     else:
         st.warning("Veri yok.")
 
@@ -131,6 +123,6 @@ with tab4:
                             term, desc = card.split(":", 1)
                             st.info(f"**{term.strip()}** \n\n {desc.strip()}")
                 except:
-                    st.toast("🎴 Kart hazırlarken bir sorun çıktı.", icon="⚠️")
+                    st.toast("Kart hazırlarken bir sorun çıktı.", icon="⚠️")
     else:
         st.warning("Veri yüklemedin kanka.")
