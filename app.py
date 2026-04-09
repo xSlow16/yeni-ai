@@ -108,3 +108,16 @@ with col_main:
             if st.button("🎯 Sınav Soruları Hazırla"):
                 try:
                     with st.spinner('Sorular hazırlanıyor...'):
+                        completion = client.chat.completions.create(
+                            messages=[
+                                {"role": "system", "content": base_prompt},
+                                {"role": "user", "content": f"Aşağıdaki notlardan 5 tane test sorusu ve cevap anahtarı hazırla:\n\n{final_content}"}
+                            ],
+                            model=MODEL_NAME,
+                        )
+                        st.markdown("#### ✍️ Pratik Soruları")
+                        st.success(completion.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"Model hatası: {e}")
+    else:
+        st.info("👋 Başlamak için yan menüden ders notlarını ekle kanka!")
