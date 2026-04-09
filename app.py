@@ -3,139 +3,154 @@ from groq import Groq
 import pdfplumber
 
 # --- 1. SAYFA AYARLARI ---
-st.set_page_config(page_title="Grok AI | Akıllı Navigatör", layout="wide", page_icon="⚡")
+st.set_page_config(page_title="Grok AI | Titan v4.0", layout="wide", page_icon="🚀")
 
 # --- 2. API AYARLARI ---
 if "GROQ_API_KEY" in st.secrets:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 else:
-    st.error("🔑 API Key bulunamadı!")
+    st.error("🔑 API Key eksik!")
     st.stop()
 
 MODEL_NAME = "llama-3.1-8b-instant"
 
-# --- 3. MODERN UI ---
+# --- 3. Gelişmiş Tasarım (Glassmorphism & Gradient) ---
 st.markdown("""
     <style>
-    .stApp { background: #0f172a; color: #f8fafc; }
+    .stApp { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #f8fafc; }
     .main-header { 
-        background: linear-gradient(90deg, #1e293b, #334155); 
-        padding: 2rem; border-radius: 1.5rem; text-align: center; 
-        border: 1px solid #3b82f6; margin-bottom: 2rem;
+        background: rgba(255, 255, 255, 0.05); 
+        backdrop-filter: blur(10px);
+        padding: 3rem; border-radius: 2rem; text-align: center; 
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        margin-bottom: 2.5rem;
     }
     .analysis-card {
-        background: rgba(30, 41, 59, 0.7); padding: 1.2rem; border-radius: 1rem;
-        border-left: 5px solid #3b82f6; margin-bottom: 1rem; font-size: 0.95rem;
+        background: rgba(59, 130, 246, 0.1); padding: 1.5rem; border-radius: 1rem;
+        border-left: 6px solid #3b82f6; margin-bottom: 1.5rem;
     }
     .topic-tag {
-        background: #1e293b; border: 1px solid #3b82f6; color: #3b82f6;
-        padding: 2px 8px; border-radius: 5px; font-size: 0.85rem; margin-right: 5px;
-        display: inline-block; margin-bottom: 5px;
+        background: rgba(124, 58, 237, 0.2); border: 1px solid #7c3aed; color: #a78bfa;
+        padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; margin: 3px;
+        display: inline-block;
     }
+    .stButton>button {
+        background: linear-gradient(45deg, #3b82f6, #7c3aed);
+        border: none; color: white; transition: 0.3s;
+    }
+    .stButton>button:hover { transform: scale(1.02); box-shadow: 0 5px 15px rgba(124, 58, 237, 0.4); }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-header"><h1>⚡ Grok AI v3.4</h1><p>İçerik Analizi ve Konu Navigasyonu</p></div>', unsafe_allow_html=True)
+# --- HEADER ---
+st.markdown('<div class="main-header"><h1>🚀 Grok AI Titan v4.0</h1><p>Yapay Zeka Destekli Hibrit Öğrenme İstasyonu</p></div>', unsafe_allow_html=True)
 
 if 'final_content' not in st.session_state: 
     st.session_state.final_content = ""
 if 'quick_analysis' not in st.session_state:
-    st.session_state.quick_analysis = "Analiz bekliyor..."
+    st.session_state.quick_analysis = "Analiz için materyal bekleniyor..."
 if 'topic_list' not in st.session_state:
     st.session_state.topic_list = []
 
-# --- SIDEBAR (ANALİZ VE KONU BAŞLIKLARI) ---
+# --- SIDEBAR (ZENGİNLEŞTİRİLMİŞ ANALİZ) ---
 with st.sidebar:
-    st.title("🔍 İçerik Keşfi")
-    
-    # 1. Analiz Kısmı
-    st.markdown("### 📝 Kısa Özet")
+    st.title("🧭 İçerik Rehberi")
+    st.markdown("### 🧬 Metin DNA'sı")
     st.markdown(f'<div class="analysis-card">{st.session_state.quick_analysis}</div>', unsafe_allow_html=True)
     
-    # 2. Konu Başlıkları Kısmı
-    st.markdown("### 📌 Ana Başlıklar")
+    st.markdown("### 🏷️ Anahtar Kavramlar")
     if st.session_state.topic_list:
         for topic in st.session_state.topic_list:
-            st.markdown(f'<span class="topic-tag"># {topic}</span>', unsafe_allow_html=True)
-    else:
-        st.write("Henüz başlık tespit edilmedi.")
-
+            st.markdown(f'<span class="topic-tag">#{topic}</span>', unsafe_allow_html=True)
+    
     st.markdown("---")
-    if st.session_state.final_content and st.button("🔄 Analizi & Başlıkları Yenile"):
-        with st.spinner('Grok AI haritayı çıkarıyor...'):
+    if st.session_state.final_content and st.button("🛰️ Derin Analiz Yap"):
+        with st.spinner('Grok AI veriyi parçalıyor...'):
             try:
-                # Hem analiz hem başlıklar için tek bir çağrı yapıp JSON gibi ayırıyoruz
                 res = client.chat.completions.create(
-                    messages=[{"role": "system", "content": "Sen bir Türk eğitim asistanısın. Sadece Türkçe cevap ver. Cevabını şu formatta ver: ANALİZ: [analiz cümlesi] BAŞLIKLAR: [başlık1, başlık2, başlık3]"},
-                              {"role": "user", "content": f"Şu metni analiz et ve en önemli 5 konu başlığını çıkar:\n\n{st.session_state.final_content[:5000]}"}],
+                    messages=[{"role": "system", "content": "Sen profesyonel bir eğitim koçusun. Sadece Türkçe cevap ver. Format: ANALİZ: [özet] BAŞLIKLAR: [virgülle ayrılmış 5 kavram]"},
+                              {"role": "user", "content": f"Şu metni analiz et:\n\n{st.session_state.final_content[:5000]}"}],
                     model=MODEL_NAME
                 )
                 output = res.choices[0].message.content
-                
-                # Basit parçalama mantığı
                 if "ANALİZ:" in output and "BAŞLIKLAR:" in output:
                     st.session_state.quick_analysis = output.split("ANALİZ:")[1].split("BAŞLIKLAR:")[0].strip()
-                    topics_raw = output.split("BAŞLIKLAR:")[1].strip()
-                    st.session_state.topic_list = [t.strip() for t in topics_raw.split(",")]
-                
+                    st.session_state.topic_list = output.split("BAŞLIKLAR:")[1].strip().split(",")
                 st.rerun()
-            except:
-                st.toast("Veriler güncellenemedi kanka.", icon="⚠️")
+            except: st.toast("Bağlantı hatası kanka!", icon="⚠️")
 
-# --- ANA SEKMELER (Giriş, Özet, Test, Kartlar aynı kalıyor) ---
-tab1, tab2, tab3, tab4 = st.tabs(["📥 Yükleme", "📝 Akıllı Özet", "🎯 Test Hazırla", "🃏 Flashcards"])
+# --- ANA SEKMELER ---
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📥 Yükleme", "📝 Akıllı Özet", "🎯 Sınav Modu", "🃏 Kartlar", "💡 Hoca Notu"])
 
 with tab1:
-    method = st.radio("Yöntem:", ["Metin Yapıştır", "PDF Yükle"], horizontal=True)
-    if method == "Metin Yapıştır":
-        st.session_state.final_content = st.text_area("Notlar:", value=st.session_state.final_content, height=350, key="text_input")
-    else:
-        file = st.file_uploader("PDF Seç", type="pdf")
-        if file:
-            with pdfplumber.open(file) as p:
-                st.session_state.final_content = "\n".join([page.extract_text() for page in p.pages if page.extract_text()])
-            st.toast("✅ Yüklendi! Yan panelden analizi yenileyebilirsin.", icon="📄")
-
-# Diğer sekmeler (Özet, Test, Flashcards) v3.3'teki gibi devam eder...
-# (Kodun geri kalanı v3.3 ile aynı olduğu için uzatmamak adına buraya eklemiyorum, 
-# ama v3.3'teki ilgili kısımları buraya yapıştırabilirsin kanka.)
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        method = st.radio("Metod:", ["Metin", "PDF"], horizontal=True)
+        if method == "Metin":
+            st.session_state.final_content = st.text_area("İçerik:", value=st.session_state.final_content, height=350)
+        else:
+            file = st.file_uploader("PDF", type="pdf")
+            if file:
+                with pdfplumber.open(file) as p:
+                    st.session_state.final_content = "\n".join([page.extract_text() for page in p.pages if page.extract_text()])
+                st.toast("✅ Veri Akışı Sağlandı!", icon="🧠")
+    with col2:
+        st.markdown("### 📌 Nasıl Kullanılır?\n1. Materyali yükle.\n2. Yan panelden **Derin Analiz**'i başlat.\n3. Sekmelerden hedefine uygun olanı seç!")
 
 with tab2:
     if st.session_state.final_content:
-        if st.button("🚀 Özeti Hazırla"):
-            with st.spinner('Grok AI özetliyor...'):
+        if st.button("🔥 Profesyonel Özet Çıkar"):
+            with st.spinner('Mürekkep akıyor...'):
                 try:
                     res = client.chat.completions.create(
-                        messages=[{"role": "system", "content": "Sen bir Türk eğitim asistanısın. Sadece Türkçe özet çıkar."},
-                                  {"role": "user", "content": f"Önemli yerleri vurgulayarak özetle:\n\n{st.session_state.final_content[:14000]}"}],
+                        messages=[{"role": "system", "content": "Sadece Türkçe ve akademik bir dille özetle."},
+                                  {"role": "user", "content": f"Aşağıdaki metni hiyerarşik bir yapıda özetle:\n\n{st.session_state.final_content[:14000]}"}],
                         model=MODEL_NAME
                     )
-                    st.info(res.choices[0].message.content)
+                    st.markdown("### 📋 Hazırlanan Ders Notu")
+                    st.markdown(res.choices[0].message.content)
                 except: st.toast("Hata!", icon="❌")
-    else: st.warning("Önce materyal yükle.")
+    else: st.warning("İçerik boş kanka.")
 
 with tab3:
     if st.session_state.final_content:
-        q_count = st.slider("Soru Adedi:", 1, 20, 5)
-        if st.button(f"🎲 {q_count} Soru Hazırla"):
-            with st.spinner('Hazırlanıyor...'):
+        q_count = st.slider("Zorluk Seviyesi (Soru Sayısı):", 1, 20, 5)
+        if st.button("📝 Testi Başlat"):
+            with st.spinner('Sorular mühürleniyor...'):
                 try:
                     res = client.chat.completions.create(
-                        messages=[{"role": "user", "content": f"Metne dayalı {q_count} test sorusu ve cevap anahtarı hazırla:\n\n{st.session_state.final_content[:11000]}"}],
+                        messages=[{"role": "user", "content": f"Metne dayalı {q_count} adet zorlayıcı test sorusu hazırlaki:\n\n{st.session_state.final_content[:11000]}"}],
                         model=MODEL_NAME
                     )
                     st.write(res.choices[0].message.content)
                 except: st.toast("Hata!", icon="❌")
-    else: st.warning("Veri yok.")
 
 with tab4:
     if st.session_state.final_content:
-        if st.button("🎴 Kartları Oluştur"):
-            with st.spinner('Hazırlanıyor...'):
+        if st.button("🎴 Ezber Kartlarını Bas"):
+            with st.spinner('Kartlar karıştırılıyor...'):
                 try:
                     res = client.chat.completions.create(
-                        messages=[{"role": "user", "content": f"Metinden 5 adet çalışma kartı çıkar:\n\n{st.session_state.final_content[:10000]}"}],
+                        messages=[{"role": "user", "content": f"5 adet 'Soru: Cevap' şeklinde kısa kart oluştur:\n\n{st.session_state.final_content[:10000]}"}],
                         model=MODEL_NAME
                     )
-                    st.write(res.choices[0].message.content)
+                    st.markdown(res.choices[0].message.content)
                 except: st.toast("Hata!", icon="❌")
+
+# --- YENİ: TAB 5 - HOCA NOTU ---
+with tab5:
+    st.subheader("👨‍🏫 Hoca Bu Metinden Ne Sorar?")
+    st.write("Grok AI metni bir öğretmen gözüyle analiz eder ve çıkması en muhtemel yerleri söyler.")
+    if st.session_state.final_content:
+        if st.button("🔍 Kritik Noktaları Bul"):
+            with st.spinner('Sınav kağıdı analiz ediliyor...'):
+                try:
+                    res = client.chat.completions.create(
+                        messages=[{"role": "system", "content": "Sen 20 yıllık bir öğretmensin. Metinden sınavda çıkması muhtemel 3 yeri 'Buraya Dikkat!' başlığıyla açıkla."},
+                                  {"role": "user", "content": st.session_state.final_content[:8000]}],
+                        model=MODEL_NAME
+                    )
+                    st.success(res.choices[0].message.content)
+                except: st.toast("Analiz başarısız.", icon="❌")
+    else: st.warning("Veri yüklemedin kanka.")
