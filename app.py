@@ -3,7 +3,7 @@ from groq import Groq
 import pdfplumber
 
 # --- 1. SAYFA AYARLARI ---
-st.set_page_config(page_title="UltraAI | Hızlı Özet", layout="wide", page_icon="🎓")
+st.set_page_config(page_title="UltraAI | Kişiselleştirilmiş Test", layout="wide", page_icon="🎓")
 
 # --- 2. API AYARLARI ---
 if "GROQ_API_KEY" in st.secrets:
@@ -23,12 +23,17 @@ st.markdown("""
         padding: 1.5rem; border-radius: 1rem; text-align: center; 
         border-bottom: 2px solid #3b82f6; margin-bottom: 2rem; 
     }
-    .stButton>button { width: 100%; border-radius: 10px; height: 3rem; background: linear-gradient(45deg, #2563eb, #7c3aed); color: white; border: none; }
+    .stButton>button { 
+        width: 100%; border-radius: 10px; height: 3rem; 
+        background: linear-gradient(45deg, #2563eb, #7c3aed); 
+        color: white; border: none; font-weight: bold;
+    }
+    .stSlider [data-baseweb="slider"] { margin-bottom: 2rem; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- HEADER ---
-st.markdown('<div class="header-card"><h1 style="color:white;">UltraAI Lite</h1><p style="color:#94a3b8;">Hızlı Özetleme ve Test Hazırlama Sistemi</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-card"><h1 style="color:white;">UltraAI Lite</h1><p style="color:#94a3b8;">Kişiselleştirilmiş Özetleme ve Test Hazırlama Sistemi</p></div>', unsafe_allow_html=True)
 
 # --- OTURUM YÖNETİMİ ---
 if 'final_content' not in st.session_state: 
@@ -43,7 +48,6 @@ with tab1:
     method = st.radio("Yöntem seç kanka:", ["Metin Yapıştır", "PDF Dosyası Yükle"], horizontal=True)
     
     if method == "Metin Yapıştır":
-        # 'key' ekleyerek her değişimde session_state'e yazılmasını sağladık
         st.session_state.final_content = st.text_area("Notlarını buraya yapıştır:", value=st.session_state.final_content, height=400, key="text_input")
     else:
         file = st.file_uploader("PDF seç", type="pdf")
@@ -68,22 +72,26 @@ with tab2:
                 except Exception as e:
                     st.error(f"Hata: {e}")
     else:
-        st.warning("⚠️ Özet çıkarmak için önce 'Giriş' sekmesinden metin yapıştırmalı veya PDF yüklemelisin kanka.")
+        st.warning("⚠️ Özet çıkarmak için önce materyal yüklemelisin.")
 
-# --- TAB 3: TEST ---
+# --- TAB 3: TEST (MANUEL SORU SAYISI EKLENDİ) ---
 with tab3:
     if st.session_state.final_content:
         st.subheader("🎯 Kendini Sına")
-        if st.button("🎲 5 Soru Hazırla"):
-            with st.spinner('Hazırlanıyor...'):
+        
+        # Kullanıcı buradan soru sayısını belirliyor
+        question_count = st.slider("Kaç soru hazırlayalım kanka?", min_value=1, max_value=20, value=5)
+        
+        if st.button(f"🎲 {question_count} Soru Hazırla"):
+            with st.spinner(f'{question_count} adet soru hazırlanıyor...'):
                 try:
                     res = client.chat.completions.create(
-                        messages=[{"role": "user", "content": f"Bu metne dayalı 5 adet test sorusu ve cevap anahtarı hazırla:\n\n{st.session_state.final_content}"}],
+                        messages=[{"role": "user", "content": f"Bu metne dayalı {question_count} adet çoktan seçmeli test sorusu ve en altta cevap anahtarı hazırla:\n\n{st.session_state.final_content}"}],
                         model=MODEL_NAME
                     )
-                    st.success("Soruların Hazır!")
+                    st.success(f"İşte senin için hazırladığım {question_count} soru!")
                     st.write(res.choices[0].message.content)
                 except Exception as e:
                     st.error(f"Hata: {e}")
     else:
-        st.warning("⚠️ Materyal bulunamadı.")
+        st.warning("⚠️ Önce materyal yükle kanka.")
