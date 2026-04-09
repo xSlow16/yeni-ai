@@ -84,14 +84,14 @@ with col_main:
         st.markdown("### 🧠 Yapay Zeka İşlemleri")
         c1, c2 = st.columns(2)
         
-        # GÜNCEL MODEL İSMİ (Llama 3.1)
+        # GÜNCEL MODEL İSMİ
         MODEL_NAME = "llama-3.1-8b-instant"
         base_prompt = f"Sen profesyonel bir eğitim asistanısın. Anlatım dilin {tone} olmalı."
         
         with c1:
             if st.button("📝 Profesyonel Özet Çıkar"):
                 try:
-                    with st.spinner('Yeni nesil model ile özetleniyor...'):
+                    with st.spinner('Özetleniyor...'):
                         completion = client.chat.completions.create(
                             messages=[
                                 {"role": "system", "content": base_prompt},
@@ -105,4 +105,6 @@ with col_main:
                     st.error(f"Model hatası: {e}")
 
         with c2:
-            if st.button("🎯 Sınav Sor
+            if st.button("🎯 Sınav Soruları Hazırla"):
+                try:
+                    with st.spinner('Sorular hazırlanıyor...'):
