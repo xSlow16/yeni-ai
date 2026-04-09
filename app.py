@@ -3,7 +3,7 @@ from groq import Groq
 import pdfplumber
 
 # --- 1. SAYFA AYARLARI ---
-st.set_page_config(page_title="UltraAI | Kesintisiz Özet", layout="wide", page_icon="🎓")
+st.set_page_config(page_title="UltraAI | Akıllı Asistan", layout="wide", page_icon="🎓")
 
 # --- 2. API AYARLARI ---
 if "GROQ_API_KEY" in st.secrets:
@@ -22,11 +22,11 @@ st.markdown("""
         background: rgba(15, 23, 42, 0.6); padding: 1.5rem; border-radius: 1rem; 
         text-align: center; border-bottom: 2px solid #3b82f6; margin-bottom: 2rem; 
     }
-    .stButton>button { background: linear-gradient(45deg, #2563eb, #7c3aed); color: white; font-weight: bold; }
+    .stButton>button { background: linear-gradient(45deg, #2563eb, #7c3aed); color: white; font-weight: bold; border: none; }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="header-card"><h1>UltraAI v2</h1><p>Limitlere Takılmayan Akıllı Asistan</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-card"><h1>UltraAI v2.1</h1><p>Daha Anlayışlı, Daha Akıllı</p></div>', unsafe_allow_html=True)
 
 if 'final_content' not in st.session_state: 
     st.session_state.final_content = ""
@@ -46,47 +46,48 @@ with tab1:
             with pdfplumber.open(file) as p:
                 text = "\n".join([page.extract_text() for page in p.pages if page.extract_text()])
                 st.session_state.final_content = text
-            st.success(f"✅ PDF yüklendi! (Toplam karakter: {len(text)})")
+            st.success(f"✅ PDF yüklendi!")
 
-# --- TAB 2: ÖZETLE (GÜVENLİ KIRPMA) ---
+# --- TAB 2: ÖZETLE (ÖZEL HATA MESAJLI) ---
 with tab2:
     if st.session_state.final_content:
         if st.button("🚀 Özeti Oluştur"):
-            with st.spinner('Limitler kontrol ediliyor ve özetleniyor...'):
+            with st.spinner('Özetleniyor...'):
                 try:
-                    # 15.000 karakter yaklaşık 4500-5000 token yapar, 6000 sınırının altında kalırız.
-                    # Eğer metin çok uzunsa ortadan bir kısmını atlayıp başı ve sonu birleştiriyoruz
-                    full_text = st.session_state.final_content
-                    if len(full_text) > 15000:
-                        safe_text = full_text[:10000] + "\n...[METİN ÇOK UZUN OLDUĞU İÇİN BİR KISMI ATLANDI]...\n" + full_text[-5000:]
-                    else:
-                        safe_text = full_text
+                    # Karakter sınırını biraz daha sıkı tutuyoruz (6000 token için max 12-14k karakter ideal)
+                    safe_text = st.session_state.final_content[:14000]
                     
                     res = client.chat.completions.create(
-                        messages=[{"role": "user", "content": f"Aşağıdaki notları önemli noktaları vurgulayarak özetle:\n\n{safe_text}"}],
+                        messages=[{"role": "user", "content": f"Önemli yerleri vurgulayarak özetle:\n\n{safe_text}"}],
                         model=MODEL_NAME
                     )
                     st.info(res.choices[0].message.content)
                 except Exception as e:
-                    st.error(f"Hata: {e}")
+                    # BURASI KRİTİK: Teknik hatayı kullanıcı dostu mesajla değiştiriyoruz
+                    if "413" in str(e) or "rate_limit" in str(e):
+                        st.error("📂 **Dosya Boyutu Çok Büyük!**")
+                        st.warning("Kanka yüklediğin metin Groq limitlerini aşıyor. Lütfen metni parçalara ayırıp yükle ya da PDF'in sadece en önemli sayfalarını kullan.")
+                    else:
+                        st.error(f"Beklenmedik bir hata oluştu: {e}")
     else:
-        st.warning("⚠️ Önce materyal yükle.")
+        st.warning("⚠️ Önce materyal yükle kanka.")
 
-# --- TAB 3: TEST (GÜVENLİ KIRPMA) ---
+# --- TAB 3: TEST (ÖZEL HATA MESAJLI) ---
 with tab3:
     if st.session_state.final_content:
         question_count = st.slider("Soru sayısı:", 1, 20, 5)
         if st.button(f"🎲 {question_count} Soru Hazırla"):
             with st.spinner('Sorular hazırlanıyor...'):
                 try:
-                    full_text = st.session_state.final_content
-                    # Test için daha dar bir pencere kullanıyoruz ki yanıt (output) tokenları için de yer kalsın
-                    safe_text_test = full_text[:12000]
-                    
+                    safe_text_test = st.session_state.final_content[:11000]
                     res = client.chat.completions.create(
-                        messages=[{"role": "user", "content": f"Bu metne dayalı {question_count} adet test sorusu ve cevap anahtarı hazırla:\n\n{safe_text_test}"}],
+                        messages=[{"role": "user", "content": f"Metne dayalı {question_count} test sorusu ve cevap anahtarı hazırla:\n\n{safe_text_test}"}],
                         model=MODEL_NAME
                     )
                     st.write(res.choices[0].message.content)
                 except Exception as e:
-                    st.error(f"Hata: {e}")
+                    if "413" in str(e) or "rate_limit" in str(e):
+                        st.error("📂 **Metin Çok Uzun!**")
+                        st.warning("Bu kadar uzun bir metinden tek seferde test hazırlayamıyorum kanka. Lütfen metni kısaltıp tekrar dene.")
+                    else:
+                        st.error(f"Hata: {e}")
