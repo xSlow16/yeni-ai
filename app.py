@@ -56,7 +56,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 if not GROQ_API_KEY:
-    st.error("🔑 API Key bulunamadı! Lütfen Streamlit Cloud > Settings > Secrets kısmına GROQ_API_KEY ekle.")
+    st.error("🔑 API Key bulunamadı! Lütfen Secrets kısmına GROQ_API_KEY ekle.")
     st.stop()
 
 # --- ANA PANEL ---
@@ -84,14 +84,14 @@ with col_main:
         st.markdown("### 🧠 Yapay Zeka İşlemleri")
         c1, c2 = st.columns(2)
         
-        # Hata korumalı model ismi (8B modeli ücretsizlerde daha stabildir)
-        MODEL_NAME = "llama3-8b-8192"
+        # GÜNCEL MODEL İSMİ (Llama 3.1)
+        MODEL_NAME = "llama-3.1-8b-instant"
         base_prompt = f"Sen profesyonel bir eğitim asistanısın. Anlatım dilin {tone} olmalı."
         
         with c1:
             if st.button("📝 Profesyonel Özet Çıkar"):
                 try:
-                    with st.spinner('Özetleniyor...'):
+                    with st.spinner('Yeni nesil model ile özetleniyor...'):
                         completion = client.chat.completions.create(
                             messages=[
                                 {"role": "system", "content": base_prompt},
@@ -102,22 +102,7 @@ with col_main:
                         st.markdown("#### 📝 Çalışma Özeti")
                         st.info(completion.choices[0].message.content)
                 except Exception as e:
-                    st.error(f"Bir hata oluştu kanka: {e}")
+                    st.error(f"Model hatası: {e}")
 
         with c2:
-            if st.button("🎯 Sınav Soruları Hazırla"):
-                try:
-                    with st.spinner('Sorular hazırlanıyor...'):
-                        completion = client.chat.completions.create(
-                            messages=[
-                                {"role": "system", "content": base_prompt},
-                                {"role": "user", "content": f"Aşağıdaki notlardan 5 tane test sorusu ve cevap anahtarı hazırla:\n\n{final_content}"}
-                            ],
-                            model=MODEL_NAME,
-                        )
-                        st.markdown("#### ✍️ Pratik Soruları")
-                        st.success(completion.choices[0].message.content)
-                except Exception as e:
-                    st.error(f"Bir hata oluştu kanka: {e}")
-    else:
-        st.info("👋 Başlamak için yan menüden ders notlarını ekle kanka!")
+            if st.button("🎯 Sınav Sor
