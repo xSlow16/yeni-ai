@@ -10,19 +10,19 @@ import time
 # --- 1. SAYFA AYARLARI ---
 st.set_page_config(page_title="UltraAI | Akıllı Hafıza v5.0", layout="wide", page_icon="🎓")
 
-# --- 2. FIREBASE BAĞLANTISI (ZIRHLI VE TAMİRCİ VERSİYON) ---
+# --- 2. FIREBASE BAĞLANTISI (ZIRHLI VERSİYON) ---
 db = None
 
 if not firebase_admin._apps:
     try:
-        # Secrets'tan JSON metnini al
+        # Secrets'tan JSON metnini çekiyoruz
         fb_creds_raw = st.secrets["FIREBASE_JSON"].strip()
         fb_creds_dict = json.loads(fb_creds_raw)
         
-        # Private Key içindeki \n ve karakter hatalarını otomatik düzelt
+        # Private Key içindeki \n ve padding hatalarını tamir et
         if "private_key" in fb_creds_dict:
-            p_key = fb_creds_dict["private_key"]
-            p_key = p_key.replace("\\n", "\n")
+            # Önce çift ters bölüleri tekilleştir, sonra gerçek alt satıra çevir
+            p_key = fb_creds_dict["private_key"].replace("\\n", "\n")
             fb_creds_dict["private_key"] = p_key
         
         # Firebase'i başlat
@@ -32,7 +32,7 @@ if not firebase_admin._apps:
         st.toast("✅ Bulut hafızası bağlandı!", icon="☁️")
     except Exception as e:
         st.error(f"⚠️ Firebase bağlantı hatası: {e}")
-        st.info("İpucu: Secrets kısmındaki FIREBASE_JSON içeriğini kontrol et kanka.")
+        st.info("İpucu: Secrets kısmındaki FIREBASE_JSON içeriğini kopyalarken sonuna boşluk gelmediğinden emin ol kanka.")
 else:
     db = firestore.client()
 
@@ -40,10 +40,10 @@ else:
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except:
-    st.error("🔑 Groq API Key bulunamadı! Lütfen Secrets'a ekle kanka.")
+    st.error("🔑 Groq API Key bulunamadı! Secrets kısmına 'GROQ_API_KEY' adıyla eklemelisin.")
     st.stop()
 
-# AZ ÖNCE HATA VEREN KRİTİK SATIR BURASI:
+# Kritik Model Tanımı (Hata giderildi)
 MODEL_NAME = "llama-3.1-8b-instant"
 
 # --- 4. MODERN UI (CSS) ---
@@ -65,8 +65,9 @@ st.markdown("""
 # --- HEADER ---
 st.markdown('<div class="header-card"><h1 style="color:white;">UltraAI Super-Asistan</h1><p style="color:#94a3b8;">Hafızalı, Akıllı ve Profesyonel Çalışma Platformu</p></div>', unsafe_allow_html=True)
 
-# --- SESSION STATE ---
-if 'final_content' not in st.session_state: st.session_state.final_content = ""
+# --- OTURUM YÖNETİMİ ---
+if 'final_content' not in st.session_state: 
+    st.session_state.final_content = ""
 
 # --- SEKMELER ---
 tab1, tab2, tab3, tab4 = st.tabs(["📥 Giriş", "📝 Özetle", "🎯 Test", "📜 Geçmiş"])
@@ -130,7 +131,7 @@ with tab3:
     else:
         st.warning("⚠️ Önce veri ekle kanka.")
 
-# --- TAB 4: GEÇMİŞ (FIREBASE) ---
+# --- TAB 4: GEÇMİŞ ---
 with tab4:
     st.subheader("📜 Kayıtlı Notların")
     if db is not None:
@@ -148,7 +149,7 @@ with tab4:
                         st.rerun()
             
             if not has_docs:
-                st.info("Henüz kaydedilmiş bir özet bulunmuyor kanka.")
+                st.info("Henüz kaydedilmiş bir özet bulunmuyor.")
                 
         except Exception as e:
             st.error(f"Veriler çekilirken hata oluştu: {e}")
