@@ -1,7 +1,11 @@
 import streamlit as st
 from groq import Groq
 import pdfplumber
+from fpdf import FPDF
 import io
+
+# --- KÜTÜPHANE KONTROL ---
+# Terminale: pip install fpdf
 
 # --- API AYARI ---
 try:
@@ -12,112 +16,113 @@ except:
 client = Groq(api_key=GROQ_API_KEY)
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="UltraAI | Student Dashboard", layout="wide", page_icon="🎓")
+st.set_page_config(page_title="UltraAI Pro | Hepsi Bir Arada", layout="wide", page_icon="⚡")
 
-# --- GELİŞMİŞ UI (CSS) ---
+# --- GÜNCEL UI (CSS) ---
 st.markdown("""
     <style>
-    .stApp { background: radial-gradient(circle at top left, #0f172a, #020617); color: #e2e8f0; }
-    .stTabs [data-baseweb="tab-list"] { gap: 24px; background-color: transparent; }
+    .stApp { background: radial-gradient(circle at top left, #020617, #0f172a); color: #f8fafc; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: rgba(30, 41, 59, 0.5);
-        border-radius: 10px 10px 0px 0px;
+        height: 60px;
+        background-color: rgba(30, 41, 59, 0.4);
+        border-radius: 12px;
         color: #94a3b8;
-        font-weight: 600;
+        padding: 0 25px;
+        transition: 0.3s;
     }
-    .stTabs [aria-selected="true"] { background-color: #3b82f6 !important; color: white !important; }
-    .header-card { background: rgba(30, 41, 59, 0.5); padding: 1.5rem; border-radius: 1rem; text-align: center; margin-bottom: 2rem; border-bottom: 3px solid #3b82f6; }
-    .main-title { font-size: 3rem; font-weight: 800; background: linear-gradient(to right, #60a5fa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stTabs [aria-selected="true"] { background: linear-gradient(45deg, #2563eb, #7c3aed) !important; color: white !important; }
+    .header-card { background: rgba(15, 23, 42, 0.6); padding: 2rem; border-radius: 1.5rem; text-align: center; border: 1px solid rgba(59, 130, 246, 0.3); margin-bottom: 2rem; }
+    .main-title { font-size: 3.5rem; font-weight: 800; background: linear-gradient(to right, #38bdf8, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
     """, unsafe_allow_html=True)
 
+# --- PDF OLUŞTURMA FONKSİYONU ---
+def create_pdf(text):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    # Türkçe karakter sorununu önlemek için latin-1 temizliği yapıyoruz (Basit versiyon)
+    clean_text = text.encode('latin-1', 'ignore').decode('latin-1')
+    pdf.multi_cell(0, 10, txt=clean_text)
+    return pdf.output(dest='S').encode('latin-1')
+
 # --- HEADER ---
-st.markdown('<div class="header-card"><h1 class="main-title">UltraAI Dashboard</h1><p>Akıllı Not Yönetimi ve Sınav Hazırlık Merkezi</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-card"><h1 class="main-title">UltraAI Super-Asistan</h1><p>Ses, Metin ve PDF: Tam Donanımlı Öğrenme Deneyimi</p></div>', unsafe_allow_html=True)
 
 if not GROQ_API_KEY:
-    st.error("🔑 API Key bulunamadı! Lütfen Secrets kısmına ekle.")
+    st.error("🔑 API Key eksik!")
     st.stop()
 
-# --- OTURUM HAFIZASI (SESSION STATE) ---
-if 'final_content' not in st.session_state:
-    st.session_state.final_content = ""
+# --- OTURUM HAFIZASI ---
+if 'final_content' not in st.session_state: st.session_state.final_content = ""
+if 'summary_result' not in st.session_state: st.session_state.summary_result = ""
+if 'quiz_result' not in st.session_state: st.session_state.quiz_result = ""
 
 # --- SEKMELER ---
-tab1, tab2, tab3 = st.tabs(["📥 Not Yükleme", "📝 Akıllı Özet", "🎯 Soru Bankası"])
+tab1, tab2, tab3, tab4 = st.tabs(["📥 Kaynak Ekle", "🎙️ Sesli Not (Beta)", "📝 Akıllı Özet", "🎯 Test Çöz"])
 
-# --- TAB 1: NOT YÜKLEME ---
+# --- TAB 1: KAYNAK EKLE ---
 with tab1:
-    st.subheader("📚 Çalışma Materyallerini Hazırla")
-    col_input, col_settings = st.columns([2, 1])
-    
-    with col_input:
-        option = st.radio("Dosya Türü:", ["Metin Yapıştır", "PDF Yükle"], horizontal=True)
-        if option == "Metin Yapıştır":
-            input_text = st.text_area("Notlarını buraya bırak kanka:", height=300, placeholder="Örn: Osmanlı Devleti Duraklama Dönemi...")
-            if input_text:
-                st.session_state.final_content = input_text
+    col_l, col_r = st.columns([2,1])
+    with col_l:
+        source_type = st.radio("Kaynak Seç:", ["Metin", "PDF"], horizontal=True)
+        if source_type == "Metin":
+            txt = st.text_area("Notlar:", height=250)
+            if txt: st.session_state.final_content = txt
         else:
-            uploaded_pdf = st.file_uploader("PDF Dosyanı Seç", type=["pdf"])
-            if uploaded_pdf:
-                try:
-                    with pdfplumber.open(uploaded_pdf) as pdf:
-                        full_text = ""
-                        for page in pdf.pages:
-                            text = page.extract_text()
-                            if text:
-                                full_text += text + "\n"
-                        st.session_state.final_content = full_text
-                    st.success(f"✅ PDF yüklendi! ({len(st.session_state.final_content)} karakter)")
-                except Exception as e:
-                    st.error(f"PDF okuma hatası: {e}")
-
-    with col_settings:
-        tone = st.select_slider("Anlatım Stili:", options=["Basit", "Akademik", "Sınav Odaklı"])
-        if st.button("🗑️ Tüm Veriyi Temizle"):
-            st.session_state.final_content = ""
+            file = st.file_uploader("PDF Yükle", type=["pdf"])
+            if file:
+                with pdfplumber.open(file) as p:
+                    st.session_state.final_content = "\n".join([page.extract_text() for page in p.pages if page.extract_text()])
+                st.success("PDF Hazır!")
+    with col_r:
+        st.write("📊 **İstatistikler**")
+        st.write(f"Karakter Sayısı: {len(st.session_state.final_content)}")
+        if st.button("🧹 Her Şeyi Sıfırla"):
+            st.session_state.clear()
             st.rerun()
 
-# --- TAB 2: AKILLI ÖZET ---
+# --- TAB 2: SESLİ NOT ---
 with tab2:
-    if st.session_state.final_content:
-        st.subheader("📝 Yapay Zeka Özeti")
-        if st.button("✨ Özeti Hazırla"):
-            try:
-                with st.spinner('Analiz ediliyor...'):
-                    # Kota dostu kesme
-                    safe_text = st.session_state.final_content[:10000]
-                    completion = client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": f"Sen bir eğitim asistanısın. Üslubun {tone} olsun. Önemli yerleri kalın yap."},
-                            {"role": "user", "content": f"Bu ders notlarını hiyerarşik maddelerle özetle:\n\n{safe_text}"}
-                        ],
-                        model="llama-3.1-8b-instant",
-                    )
-                    st.info(completion.choices[0].message.content)
-            except Exception as e:
-                st.error("Bir sorun oluştu. Kota dolmuş olabilir, lütfen bir az bekleyip tekrar dene.")
-    else:
-        st.warning("⚠️ Özet için önce 'Not Yükleme' sekmesinden veri eklemelisin kanka.")
+    st.subheader("🎙️ Dersteki Ses Kaydını Metne Dönüştür")
+    audio_file = st.file_uploader("Ses Dosyası Yükle (mp3/wav)", type=["mp3", "wav"])
+    if audio_file:
+        st.info("Bu özellik için OpenAI Whisper veya Groq Whisper API entegrasyonu gerekiyor. Şimdilik metin üzerinden devam ediyoruz.")
 
-# --- TAB 3: SORU BANKASI ---
+# --- TAB 3: AKILLI ÖZET ---
 with tab3:
     if st.session_state.final_content:
-        st.subheader("🎯 Kendini Test Et")
-        q_count = st.slider("Soru Sayısı", 3, 10, 5)
-        if st.button("🎲 Soruları Üret"):
-            try:
-                with st.spinner('Sorular hazırlanıyor...'):
-                    safe_text = st.session_state.final_content[:10000]
-                    completion = client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": f"Sen bir öğretmensin. Üslubun {tone} olsun."},
-                            {"role": "user", "content": f"Bu notlardan {q_count} tane test sorusu ve en alta cevap anahtarı hazırla:\n\n{safe_text}"}
-                        ],
-                        model="llama-3.1-8b-instant",
-                    )
-                    st.success(completion.choices[0].message.content)
-            except Exception as e:
-                st.error("Soru hazırlarken bir hata oluştu. Biraz bekleyip tekrar deneyebilirsin.")
+        tone = st.selectbox("Anlatım:", ["Basit", "Akademik", "Özetin Özeti"])
+        if st.button("🚀 Özeti Başlat"):
+            with st.spinner('Analiz ediliyor...'):
+                res = client.chat.completions.create(
+                    messages=[{"role": "user", "content": f"Üslup {tone}. Şu notları özetle:\n\n{st.session_state.final_content[:10000]}"}],
+                    model="llama-3.1-8b-instant"
+                )
+                st.session_state.summary_result = res.choices[0].message.content
+        
+        if st.session_state.summary_result:
+            st.markdown(st.session_state.summary_result)
+            # PDF İndirme Butonu
+            pdf_bytes = create_pdf(st.session_state.summary_result)
+            st.download_button("📥 Özeti PDF Olarak İndir", data=pdf_bytes, file_name="ozet.pdf", mime="application/pdf")
     else:
-        st.warning("⚠️ Soru bankası için önce 'Not Yükleme' sekmesinden veri eklemelisin.")
+        st.warning("Önce veri ekle kanka.")
+
+# --- TAB 4: TEST ÇÖZ ---
+with tab4:
+    if st.session_state.final_content:
+        if st.button("🎲 Soru Üret"):
+            with st.spinner('Sorular hazırlanıyor...'):
+                res = client.chat.completions.create(
+                    messages=[{"role": "user", "content": f"Bu notlardan 5 test sorusu çıkar:\n\n{st.session_state.final_content[:10000]}"}],
+                    model="llama-3.1-8b-instant"
+                )
+                st.session_state.quiz_result = res.choices[0].message.content
+        
+        if st.session_state.quiz_result:
+            st.markdown(st.session_state.quiz_result)
+            # PDF İndirme Butonu
+            quiz_pdf = create_pdf(st.session_state.quiz_result)
+            st.download_button("📥 Soruları PDF Olarak İndir", data=quiz_pdf, file_name="test.pdf", mime="application/pdf")
